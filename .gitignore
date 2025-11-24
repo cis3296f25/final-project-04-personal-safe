@@ -24,3 +24,9 @@ pip-wheel-metadata/
 build/
 dist/
 main.spec
+
+# Ignore accidental Node/PyInstaller artifacts
+node_modules/
+package.json
+package-lock.json
+resetPassword.py

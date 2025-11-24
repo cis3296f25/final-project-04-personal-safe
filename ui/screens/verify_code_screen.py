@@ -18,9 +18,7 @@ class VerifyCodeScreen(Screen):
         else:
             self._show_popup("Invalid Code", "The code you entered is incorrect.")
 
-#THE VAULT DOESN'T OPEN WITHOUT A MASTER PASSWORD BEING INPUT
-#BECAUSE THE MASTER PASSWORD IS NEEDED TO DECRYPT THE VAULT
-#CHANGE THE CODE HERE ONCE RESET PASSWORD IS IMPLEMENTED
+
     def _ask_reset_password(self):
         """Popup asking user if they want to reset their password"""
         content = BoxLayout(orientation="vertical", padding=12, spacing=12)
