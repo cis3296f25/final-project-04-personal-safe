@@ -4,8 +4,7 @@ import base64
 import hashlib
 from typing import Any, Dict
 
-import crypto
-from crypto import CryptoUtils
+from .crypto import CryptoUtils
 
 PBKDF2_ITERATIONS = 100_000
 SALT_SIZE = 16  # bytes

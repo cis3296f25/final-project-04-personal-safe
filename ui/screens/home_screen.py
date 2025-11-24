@@ -3,28 +3,36 @@ from kivy.properties import ListProperty, StringProperty, ObjectProperty
 from kivy.logger import Logger
 from app_state import app_state
 
-
 class HomeScreen(Screen):
     entries = ListProperty([])  # list of (site, password)
     status = StringProperty("Ready")
     entries_grid = ObjectProperty(None)  # bound to ids.entries_grid in KV
-
+    vault_header = StringProperty("Your Vault")
+    
     def on_pre_enter(self, *args):
         self.refresh_entries()
 
     def refresh_entries(self):
+        profile_name = ""
+        if getattr(app_state, "profile", None):
+            profile_name = app_state.profile.get("display_name", "").strip()
+        prefix = f"{profile_name}'s " if profile_name else "Your "
+        
         if not app_state.vault:
             self.entries = []
             self.status = "Vault not loaded"
+            self.vault_header = f"{profile_name}'s Vault" if profile_name else "Your Vault"
             self._render_entries()
             return
         try:
             self.entries = app_state.vault.items()
             if not self.entries:
-                self.status = "Vault empty"
+                self.status = f"{profile_name}'s Vault empty" if profile_name else "Your Vault"
             else:
-                self.status = f"{len(self.entries)} entries"
+                self.status = f"{profile_name}'s Vault - {len(self.entries)} entries"
+            self.vault_header = f"{profile_name}'s Vault" if profile_name else "Your Vault"
             self._render_entries()
+
         except Exception as e:
             Logger.exception("Failed refreshing entries")
             self.status = f"Error: {e}"

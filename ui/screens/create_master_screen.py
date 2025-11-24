@@ -1,3 +1,4 @@
+import re
 from kivy.uix.screenmanager import Screen
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.logger import Logger
@@ -15,6 +16,7 @@ from kivy.uix.textinput import TextInput
 class CreateMasterScreen(Screen):
     pwd1_field = ObjectProperty(None)
     pwd2_field = ObjectProperty(None)
+    email_field = ObjectProperty(None)
     error_text = StringProperty("")
 
     def on_pre_enter(self, *args):
@@ -23,6 +25,8 @@ class CreateMasterScreen(Screen):
             self.pwd1_field.text = ""
         if self.pwd2_field:
             self.pwd2_field.text = ""
+        if self.email_field:
+            self.email_field.text = ""
 
     def _validate(self, p1: str, p2: str) -> str | None:
         if not p1 or not p2:
@@ -39,19 +43,37 @@ class CreateMasterScreen(Screen):
         p1 = (self.pwd1_field.text or "") if self.pwd1_field else ""
         p2 = (self.pwd2_field.text or "") if self.pwd2_field else ""
         err = self._validate(p1, p2)
+        email = (self.email_field.text or "").strip() if self.email_field else ""
+        
         if err:
             self.error_text = err
             return
+        
+        if email:
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                self.error_text = "Please enter a valid email address"
+                return
+
         try:
             Logger.info("CreateMaster: creating master password")
             mp.createMasterPassword(p1)
+
+            try:
+                if hasattr(mp, "setRecoveryEmail"):
+                    mp.setRecoveryEmail(email)
+                else:
+                    Logger.warning("CreateMaster: mp.setRecoveryEmail not found; email not persisted")
+            except Exception:
+                Logger.exception("CreateMaster: mp.setRecoveryEmail failed")
+            #update app_state
+            try:
+                app_state.profile = {**(getattr(app_state, "profile", {}) or {}), "email": email}
+            except Exception:
+                Logger.exception("CreateMaster: failed to update app_state.profile")
+
             app_state.vault = Vault(p1)
             app_state.master_password = p1
             Logger.info("CreateMaster: master password created")
-            
-            popup = RecoveryEmailPopup()
-            popup.bind(on_dismiss=lambda *_: self._after_recovery_popup())
-            popup.open()
 
         except Exception as e:
             Logger.exception("Create master failed")
@@ -60,27 +82,6 @@ class CreateMasterScreen(Screen):
     def goto_home(self):
         if "HOME" in self.manager.screen_names:
             self.manager.current = "HOME"
-
-    def _after_recovery_popup(self):
-        self.error_text = ""
-        if "HOME" in self.manager.screen_names:
-            self.manager.current = "HOME"
-        else:
-            self.manager.current = "LOGIN"
-
-    def saveRecoveryEmail(self, email_text: str):
-        """Called from the KV popup 'Save' button via app.root.current_screen.save_recovery_email(...)"""
-        email = (email_text or "").strip()
-        if email:
-            if "@" not in email or "." not in email:
-                self.error_text = "Please enter a valid email address"
-                return
-        try:
-            mp.setRecoveryEmail(email)
-            self._show_info("Saved", f"Recovery email saved: {email or '(cleared)'}")
-        except Exception as e:
-            Logger.exception("save_recovery_email failed")
-            self._show_info("Error", f"Failed to save recovery email: {e}")
 
     def _show_info(self, title: str, message: str):
         box = BoxLayout(orientation="vertical", padding=10, spacing=10)
