@@ -55,7 +55,7 @@
             hint_text: "example.com"
             halign: "right"
             multiline: False
-            padding_y: (self.height - self.font_size) / 2
+            padding_y: dp(12)
 
         # Password row
         BoxLayout:
@@ -78,7 +78,7 @@
             hint_text: "Enter or generate"
             multiline: False
             password: True
-            padding_y: (self.height - self.font_size) / 2
+            padding_y: dp(12)
           CustomToggleButton:
             text: "Show" if self.state == "normal" else "Hide"
             size_hint_x: None
@@ -131,6 +131,13 @@
             size_hint_x: None
             width: dp(120)
             on_release: root.do_save()
+
+        # Status label
+        Label:
+          text: root.info_text
+          size_hint_y: None
+          height: dp(24)      
+          color: (1,0,0,1) if 'Error' in root.info_text or 'error' in root.info_text else (0.1,0.5,0.1,1)
 
 
 <EditPasswordScreen>:
@@ -260,7 +267,7 @@
           text: root.info_text
           size_hint_y: None
           height: dp(24)
-          color: 0.3,0.2,0.2,1
+          color: (1,0,0,1) if 'Error' in root.info_text or 'error' in root.info_text else (0.1,0.5,0.1,1)
 
 <DeletePasswordScreen>:
   canvas.before:
@@ -335,4 +342,4 @@
           text: root.info_text
           size_hint_y: None
           height: dp(24)
-          color: 0.3,0.2,0.2,1
+          color: (1,0,0,1) if 'Error' in root.info_text or 'error' in root.info_text else (0.1,0.5,0.1,1)
