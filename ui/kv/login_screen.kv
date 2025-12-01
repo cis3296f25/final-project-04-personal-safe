@@ -36,7 +36,8 @@
                 hint_text: "Master password"
                 password: True
                 multiline: False
-                on_text_validate: root.on_submit()
+                on_text_validate: 
+                    root.verify_2fa_and_login() if root.twofa_needed else root.on_submit()
                 on_focus: self.hint_text = '' if self.focus else ('Master password' if not self.text else self.hint_text)
                 size_hint_y: None
                 height: dp(44)
@@ -47,7 +48,8 @@
                 text: "Login"
                 size_hint_y: None
                 height: dp(44)
-                on_release: root.do_login()
+                on_release:
+                    root.verify_2fa_and_login() if root.twofa_needed else root.on_submit()
 
             CustomButton:
                 id: forgot_btn
