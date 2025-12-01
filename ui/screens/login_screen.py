@@ -21,8 +21,10 @@ from email.message import EmailMessage
 import threading
 from dotenv import load_dotenv
 from ui.screens.profile_screen import load_profile
+from kivy.app import App
 
 load_dotenv()
+
 
 def generate_reset_code(length=6):
     """Return a random numeric code as a string."""
@@ -79,7 +81,11 @@ class LoginScreen(Screen):
             app_state.vault = Vault(pwd)
             app_state.master_password = pwd
             Logger.info("Login: authenticated; vault initialized")
-            #Load profile
+            try:
+                App.get_running_app().show_status("Logged in")
+            except Exception:
+                pass
+            # Load profile
             if not getattr(app_state, "profile", None):
                 app_state.profile = load_profile()
             if self.manager and "HOME" in self.manager.screen_names:
@@ -89,7 +95,7 @@ class LoginScreen(Screen):
                 except Exception:
                     Logger.exception("Failed to refresh Home screen after login")
 
-            #If a home screen exists, navigate there; otherwise stay
+            # If a home screen exists, navigate there; otherwise stay
             if "HOME" in self.manager.screen_names:
                 self.manager.current = "HOME"
         except Exception as e:
@@ -170,6 +176,7 @@ class LoginScreen(Screen):
                 except Exception:
                     Logger.exception(f"Failed to read profile file: {p}")
         return {}
+
     def _get_recovery_email(self) -> str:
         try:
             mp_obj = mp.loadRecovery()
@@ -177,8 +184,7 @@ class LoginScreen(Screen):
                 return mp_obj["email"] or ""
         except Exception:
             Logger.exception("Failed to load recovery email from master password")
-    
-    #fallback to profile JSON
+        # fallback to profile JSON
         profile = getattr(app_state, "profile", None) or self._load_profile_file()
         if isinstance(profile, dict):
             return profile.get("email", "") or ""

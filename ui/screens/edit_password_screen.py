@@ -57,6 +57,12 @@ class EditPasswordScreen(Screen):
         try:
             app_state.vault.add(site, pwd)
             self.info_text = "Updated"
+            try:
+                from kivy.app import App
+
+                App.get_running_app().show_status("Password updated")
+            except Exception:
+                pass
         except Exception as e:
             Logger.exception("Update failed")
             self.info_text = f"Error: {e}"
