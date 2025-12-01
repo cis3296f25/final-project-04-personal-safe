@@ -41,9 +41,10 @@
                         size_hint_y: None
                         height: dp(20)
                         color: 75/255, 66/255, 55/255, 1
-                    TextInput:
+                    CustomTextInput:
                         id: display_input
                         text: root.display_name
+                        font_size: "18sp"
                         multiline: False
                         on_text: root.display_name = self.text
 
@@ -52,9 +53,10 @@
                         size_hint_y: None
                         height: dp(20)
                         color: 75/255, 66/255, 55/255, 1
-                    TextInput:
+                    CustomTextInput:
                         id: email_input
                         text: root.email
+                        font_size: "18sp"
                         multiline: False
                         on_text: root.email = self.text
 
@@ -70,3 +72,24 @@
                         text: "Cancel"
                         on_release:
                             app.root.current = "HOME"
+
+                # 2FA status and toggle
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(44)
+                    spacing: dp(8)
+
+                    Label:
+                        text: "2FA: " + root.twofa_status
+                        font_size: "20sp"
+                        size_hint_x: None
+                        width: dp(160)
+                        color: 0.3,0.2,0.2,1
+
+                    CustomButton:
+                        text: "Enable 2FA"
+                        on_release: root.enable_2fa()
+
+                    CustomButton:
+                        text: "Disable 2FA"
+                        on_release: root.disable_2fa()
