@@ -27,8 +27,12 @@ def createMasterPassword(password: str):
 def verifyMasterPassword(password: str) -> bool:
     "Check master password"
     password = password.strip()
-    with open(masterHashFile, "rb") as f:
-        storedHash = f.read()
+    try:
+        with open(masterHashFile, "rb") as f:
+            storedHash = f.read()
+    except FileNotFoundError:
+        return False
+    
     return bcrypt.checkpw(password.encode(), storedHash)
 
 #Recovery Helper Functions
@@ -84,17 +88,7 @@ def getMasterPassword(parent=None):
     createdRoot = False
     if parent is None:
         parent = tk.Tk()
-        createdRoot = True
-    
-    if email:
-        setRecoveryEmail(email)
-        #Update profile file and app_state
-        from ui.screens.profile_screen import save_profile_to_disk
-        from app_state import app_state
-        profile = {"email": email, "display_name": ""}
-        app_state.profile = profile
-        save_profile_to_disk(profile)
-
+        createdRoot = True 
     try:
         if not os.path.exists(masterHashFile):
             while True:
@@ -124,7 +118,6 @@ def getMasterPassword(parent=None):
                     setRecoveryEmail(email)
                     messagebox.showinfo("Recovery", f"Recovery email {email} saved.", parent=parent)
             
-                
                 return pw
             
         else:

@@ -75,9 +75,4 @@ class Vault:
             # merge, backup entries win
             self._data = {**(self._data or {}), **entries}
 
-        try:
-            if hasattr(self, "save_to_disk"):
-                self.save_to_disk()
-        except Exception:
-            # swallow; caller will handle state if needed
-            pass
+        storage.save_vault(self._data, self._master_password)
