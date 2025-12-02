@@ -20,9 +20,15 @@ import smtplib
 from email.message import EmailMessage
 import threading
 from dotenv import load_dotenv
+from kivy.properties import ObjectProperty, StringProperty, BooleanProperty
 from ui.screens.profile_screen import load_profile
 
+from core import twofactor as tf
+from kivy.uix.textinput import TextInput
+from kivy.app import App
+
 load_dotenv()
+
 
 def generate_reset_code(length=6):
     """Return a random numeric code as a string."""
@@ -53,12 +59,26 @@ def send_reset_email(to_email, code):
 class LoginScreen(Screen):
     error_text = StringProperty("")  # Bound to error label
     pwd_field = ObjectProperty(None)  # Bound to password TextInput
+    twofa_needed = BooleanProperty(False)
+    twofa_field = ObjectProperty(None)
+    _pending_pwd = None
 
     def on_pre_enter(self, *args):
-        # Reset UI state
         self.error_text = ""
         if self.pwd_field:
             self.pwd_field.text = ""
+        profile = getattr(app_state, "profile", None) or load_profile()
+        try:
+            self.twofa_needed = (
+                bool(profile.get("2fa_enabled")) if isinstance(profile, dict) else False
+            )
+        except Exception:
+            self.twofa_needed = False
+        try:
+            if self.twofa_field:
+                self.twofa_field.text = ""
+        except Exception:
+            pass
         Logger.info("LoginScreen: ready")
 
     def do_login(self):
@@ -75,29 +95,77 @@ class LoginScreen(Screen):
                     self.error_text = "Incorrect password"
                     return
 
-            # Initialize vault with current password
-            app_state.vault = Vault(pwd)
-            app_state.master_password = pwd
-            Logger.info("Login: authenticated; vault initialized")
-            #Load profile
-            if not getattr(app_state, "profile", None):
-                app_state.profile = load_profile()
-            if self.manager and "HOME" in self.manager.screen_names:
-                try:
-                    home = self.manager.get_screen("HOME")
-                    home.refresh_entries()
-                except Exception:
-                    Logger.exception("Failed to refresh Home screen after login")
+            profile = getattr(app_state, "profile", None) or load_profile()
 
-            #If a home screen exists, navigate there; otherwise stay
-            if "HOME" in self.manager.screen_names:
-                self.manager.current = "HOME"
+            def _complete_login():
+                # Initialize vault with current password
+                app_state.vault = Vault(pwd)
+                app_state.master_password = pwd
+                Logger.info("Login: authenticated; vault initialized")
+                try:
+                    App.get_running_app().show_status("Logged in")
+                except Exception:
+                    pass
+                # Load profile if not set
+                if not getattr(app_state, "profile", None):
+                    app_state.profile = profile
+                if self.manager and "HOME" in self.manager.screen_names:
+                    try:
+                        home = self.manager.get_screen("HOME")
+                        home.refresh_entries()
+                    except Exception:
+                        Logger.exception("Failed to refresh Home screen after login")
+                # If a home screen exists, navigate there; otherwise stay
+                if "HOME" in self.manager.screen_names:
+                    self.manager.current = "HOME"
+
+            if profile and profile.get("2fa_enabled") and profile.get("2fa_secret"):
+                # if 2FA enabled, show inline twofa input area in the KV
+                self._pending_pwd = pwd
+                self.twofa_needed = True
+                return
+            _complete_login()
         except Exception as e:
             Logger.exception("Login error")
             self.error_text = f"Error: {e}"
 
     def on_submit(self):
         self.do_login()
+
+    def verify_2fa_and_login(self):
+        try:
+            profile = getattr(app_state, "profile", None) or load_profile()
+            if not (
+                profile and profile.get("2fa_enabled") and profile.get("2fa_secret")
+            ):
+                self.error_text = "2FA not configured"
+                return
+            code = (self.twofa_field.text or "").strip() if self.twofa_field else ""
+            ok = tf.verify_code(profile.get("2fa_secret"), code, window=1)
+            if ok:
+                pwd = self._pending_pwd or ""
+                self._pending_pwd = None
+                app_state.vault = Vault(pwd)
+                app_state.master_password = pwd
+                try:
+                    App.get_running_app().show_status("Logged in")
+                except Exception:
+                    pass
+                if not getattr(app_state, "profile", None):
+                    app_state.profile = profile
+                if self.manager and "HOME" in self.manager.screen_names:
+                    try:
+                        home = self.manager.get_screen("HOME")
+                        home.refresh_entries()
+                    except Exception:
+                        Logger.exception("Failed to refresh Home screen after login")
+                if "HOME" in self.manager.screen_names:
+                    self.manager.current = "HOME"
+            else:
+                self.error_text = "Invalid 2FA code"
+        except Exception as e:
+            Logger.exception("2FA verify failed")
+            self.error_text = f"2FA error: {e}"
 
     def _send_recovery_thread(self, email, smtp_config, popup):
         try:
@@ -170,6 +238,7 @@ class LoginScreen(Screen):
                 except Exception:
                     Logger.exception(f"Failed to read profile file: {p}")
         return {}
+
     def _get_recovery_email(self) -> str:
         try:
             mp_obj = mp.loadRecovery()
@@ -177,8 +246,7 @@ class LoginScreen(Screen):
                 return mp_obj["email"] or ""
         except Exception:
             Logger.exception("Failed to load recovery email from master password")
-    
-    #fallback to profile JSON
+        # fallback to profile JSON
         profile = getattr(app_state, "profile", None) or self._load_profile_file()
         if isinstance(profile, dict):
             return profile.get("email", "") or ""
