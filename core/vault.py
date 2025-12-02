@@ -76,3 +76,10 @@ class Vault:
             self._data = {**(self._data or {}), **entries}
 
         storage.save_vault(self._data, self._master_password)
+        
+    def clear(self) -> None:
+        """Clear all vault entries and save the empty vault."""
+        self._data = {}  # remove all entries
+        # Persist the empty vault to disk
+        from . import storage
+        storage.save_vault(self._data, self._master_password)
