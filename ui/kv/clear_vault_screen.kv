@@ -1,0 +1,29 @@
+<ClearVaultScreen>:
+    BoxLayout:
+        orientation: "vertical"
+        padding: 20
+        spacing: 10
+
+        Label:
+            text: "Clear Vault"
+            font_size: "18sp"
+            size_hint_y: None
+            height: 40
+
+        Label:
+            text: root.info_text
+            color: 1,0,0,1
+            size_hint_y: None
+            height: 30
+
+        Button:
+            text: "Clear Vault"
+            size_hint_y: None
+            height: 40
+            on_release: root.confirm_clear()
+
+        Button:
+            text: "Back"
+            size_hint_y: None
+            height: 40
+            on_release: root.go_home()

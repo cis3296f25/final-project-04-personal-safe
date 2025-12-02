@@ -18,6 +18,9 @@ def _load_kv_if_exists():
         "kivy_ui.kv",
         "ui/kv/profile.kv",
         "ui/kv/verify_code_screen.kv",
+        "ui/kv/backup_export_screen.kv",
+        "ui/kv/backup_import_Screen.kv",
+        "ui/kv/clear_vault_screen.kv",
     ):
         p = Path(kv)
         if p.exists():
@@ -37,6 +40,7 @@ from ui.screens.verify_code_screen import VerifyCodeScreen
 from ui.screens.reset_password_screen import ResetPasswordScreen
 from ui.screens.backup_export_screen import BackupExportScreen
 from ui.screens.backup_import_screen import BackupImportScreen
+from ui.screens.clear_vault_screen import ClearVaultScreen
 from core import masterPassword as mp
 
 class PersonalSafeApp(App):
@@ -59,6 +63,7 @@ class PersonalSafeApp(App):
         sm.add_widget(ResetPasswordScreen(name="RESET_PASSWORD"))
         sm.add_widget(BackupExportScreen(name="BACKUP_EXPORT"))
         sm.add_widget(BackupImportScreen(name="BACKUP_IMPORT"))
+        sm.add_widget(ClearVaultScreen(name="CLEAR_VAULT"))
 
         sm.app = self
         self.sm = sm

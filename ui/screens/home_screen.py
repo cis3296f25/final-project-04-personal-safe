@@ -131,3 +131,10 @@ class HomeScreen(Screen):
     def goto_backup_import(self):
         if "BACKUP_IMPORT" in self.manager.screen_names:
             self.manager.current = "BACKUP_IMPORT"
+            
+    def goto_clear_vault(self):
+        if "CLEAR_VAULT" in self.manager.screen_names:
+            self.manager.current = "CLEAR_VAULT"
+        else:
+            from kivy.logger import logger
+            Logger.error("HomeScreen: CLEAR_VAULT screen not found")
