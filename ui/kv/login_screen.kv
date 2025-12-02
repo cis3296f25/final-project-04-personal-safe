@@ -44,6 +44,25 @@
                 halign: "center"
                 padding_y: dp(12)
 
+            # 2FA row if needed
+            BoxLayout:
+                id: twofa_box
+                size_hint_y: None
+                height: dp(44) if root.twofa_needed else dp(0)
+                opacity: 1 if root.twofa_needed else 0
+                spacing: dp(8)
+
+                CustomTextInput:
+                    id: twofa_input
+                    hint_text: "2FA code"
+                    multiline: False
+                    on_text_validate: root.verify_2fa_and_login()
+                    on_focus: self.hint_text = '' if self.focus else ('2FA code' if not self.text else self.hint_text)
+                    size_hint_x: 1
+                    height: dp(44)
+                    halign: 'center'
+                    padding_y: dp(12)
+
             CustomButton:
                 text: "Login"
                 size_hint_y: None

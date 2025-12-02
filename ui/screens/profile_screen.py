@@ -159,6 +159,10 @@ class ProfileScreen(Screen):
                 profile = load_profile()
                 profile["2fa_enabled"] = True
                 profile["2fa_secret"] = secret
+                try:
+                    app_state.profile = profile
+                except Exception:
+                    pass
                 save_profile_to_disk(profile)
                 self.twofa_status = "Enabled"
                 popup.dismiss()
@@ -202,6 +206,10 @@ class ProfileScreen(Screen):
             if secret and tf.verify_code(secret, code):
                 profile["2fa_enabled"] = False
                 profile.pop("2fa_secret", None)
+                try:
+                    app_state.profile = profile
+                except Exception:
+                    pass
                 save_profile_to_disk(profile)
                 self.twofa_status = "Disabled"
                 popup.dismiss()

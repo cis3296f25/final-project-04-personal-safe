@@ -53,7 +53,8 @@
           CustomTextInput:
             id: site_input
             hint_text: "example.com"
-            halign: "right"
+            halign: "center"
+            on_focus: self.hint_text = '' if self.focus else ('example.com' if not self.text else self.hint_text)
             multiline: False
             padding_y: dp(12)
 
@@ -75,7 +76,9 @@
           CustomTextInput:
             color: 0,0,0,1
             id: pwd_input
-            hint_text: "Enter or generate"
+            halign: "center"
+            hint_text: "Enter or generate here"
+            on_focus: self.hint_text = '' if self.focus else ('Enter or generate here' if not self.text else self.hint_text)
             multiline: False
             password: True
             padding_y: dp(12)
@@ -210,6 +213,10 @@
           CustomTextInput:
             id: pwd_input
             password: True
+            halign: "center"
+            hint_text: "Enter or generate here"
+            on_focus: self.hint_text = '' if self.focus else ('Enter or generate here' if not self.text else self.hint_text)
+            padding_y: dp(12)
             multiline: False
           CustomToggleButton:
             text: "Show" if self.state == "normal" else "Hide"
