@@ -8,14 +8,14 @@ Ensure Python 3.13.5 is installed. You can check by running: python3 --version
 1. Change directory to project root  
 `cd final-project-04-personal-safe`
 2. Create a virtual environment  
-`python -m venv .venv`
+`python -m venv venv`
 3. Point to the new virtual environment as the source  
     * Windows  
-    `.venv\Scripts\activate`
+    `venv\Scripts\activate`
     * Mac/Linux  
     `source venv/bin/activate`
 4. Install Dependencies  
-`pip install cryptography pyinstaller kivy bcrypt dotenv`
+`pip install cryptography pyinstaller kivy bcrypt dotenv qrcode pillow pyotp`
 5. Create a `.env` file in the root directory following the format of `.env.sample` and fill in the required values
 6. Build the application  
 `pyinstaller --onefile --windowed main.py`
