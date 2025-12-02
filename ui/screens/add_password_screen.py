@@ -50,6 +50,12 @@ class AddPasswordScreen(Screen):
         try:
             app_state.vault.add(site, pwd)
             self.info_text = f"Saved {site}"
+            try:
+                from kivy.app import App
+
+                App.get_running_app().show_status(f"Saved {site}")
+            except Exception:
+                pass
         except Exception as e:
             Logger.exception("Add password failed")
             self.info_text = f"Error: {e}"

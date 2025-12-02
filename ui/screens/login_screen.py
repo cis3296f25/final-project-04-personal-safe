@@ -20,9 +20,17 @@ import smtplib
 from email.message import EmailMessage
 import threading
 from dotenv import load_dotenv
-from ui.screens.profile_screen import load_profile
+from kivy.properties import ObjectProperty, StringProperty, BooleanProperty
+from ui.screens.profile_screen import load_profile, save_profile_to_disk
+from core import storage as storage
+from kivy.app import App
+
+from core import twofactor as tf
+from kivy.uix.textinput import TextInput
+from kivy.app import App
 
 load_dotenv()
+
 
 def generate_reset_code(length=6):
     """Return a random numeric code as a string."""
@@ -53,12 +61,36 @@ def send_reset_email(to_email, code):
 class LoginScreen(Screen):
     error_text = StringProperty("")  # Bound to error label
     pwd_field = ObjectProperty(None)  # Bound to password TextInput
+    twofa_needed = BooleanProperty(False)
+    twofa_field = ObjectProperty(None)
+    _pending_pwd = None
 
     def on_pre_enter(self, *args):
-        # Reset UI state
         self.error_text = ""
         if self.pwd_field:
             self.pwd_field.text = ""
+        # bind twofa_field to the kv widget if present
+        try:
+            self.twofa_field = (
+                getattr(self.ids, "twofa_input", None) or self.twofa_field
+            )
+        except Exception:
+            try:
+                self.twofa_field = self.ids.get("twofa_input")
+            except Exception:
+                pass
+        profile = getattr(app_state, "profile", None) or load_profile()
+        try:
+            self.twofa_needed = (
+                bool(profile.get("2fa_enabled")) if isinstance(profile, dict) else False
+            )
+        except Exception:
+            self.twofa_needed = False
+        try:
+            if self.twofa_field:
+                self.twofa_field.text = ""
+        except Exception:
+            pass
         Logger.info("LoginScreen: ready")
 
     def do_login(self):
@@ -72,32 +104,255 @@ class LoginScreen(Screen):
                 mp.createMasterPassword(pwd)
             else:
                 if not mp.verifyMasterPassword(pwd):
-                    self.error_text = "Incorrect password"
-                    return
+                    try:
+                        reached = self._inc_failed_attempts_and_check()
+                        if reached:
+                            self._wipe_all_data()
+                            self.error_text = "Too many failed attempts — vault wiped"
+                            return
+                        # still has attempts left
+                        profile = (
+                            getattr(app_state, "profile", None) or load_profile() or {}
+                        )
+                        remaining = 5 - int(profile.get("failed_master_attempts", 0))
+                        self.error_text = (
+                            f"Incorrect password ({remaining} attempts left)"
+                        )
+                        return
+                    except Exception:
+                        self.error_text = "Incorrect password"
+                        return
 
-            # Initialize vault with current password
-            app_state.vault = Vault(pwd)
-            app_state.master_password = pwd
-            Logger.info("Login: authenticated; vault initialized")
-            #Load profile
-            if not getattr(app_state, "profile", None):
-                app_state.profile = load_profile()
-            if self.manager and "HOME" in self.manager.screen_names:
+            profile = getattr(app_state, "profile", None) or load_profile()
+
+            def _complete_login():
+                # Initialize vault with current password
+                app_state.vault = Vault(pwd)
+                app_state.master_password = pwd
+                Logger.info("Login: authenticated; vault initialized")
+                # reset failed attempts on successful login
                 try:
-                    home = self.manager.get_screen("HOME")
-                    home.refresh_entries()
+                    self._reset_failed_attempts()
                 except Exception:
-                    Logger.exception("Failed to refresh Home screen after login")
+                    pass
+                try:
+                    App.get_running_app().show_status("Logged in")
+                except Exception:
+                    pass
+                # Load profile if not set
+                if not getattr(app_state, "profile", None):
+                    app_state.profile = profile
+                if self.manager and "HOME" in self.manager.screen_names:
+                    try:
+                        home = self.manager.get_screen("HOME")
+                        home.refresh_entries()
+                    except Exception:
+                        Logger.exception("Failed to refresh Home screen after login")
+                # If a home screen exists, navigate there; otherwise stay
+                if "HOME" in self.manager.screen_names:
+                    self.manager.current = "HOME"
 
-            #If a home screen exists, navigate there; otherwise stay
-            if "HOME" in self.manager.screen_names:
-                self.manager.current = "HOME"
+            if profile and profile.get("2fa_enabled") and profile.get("2fa_secret"):
+                # if 2FA enabled, show inline twofa input area in the KV
+                self._pending_pwd = pwd
+                self.twofa_needed = True
+                # ensure the twofa input reference is set and focus the field
+                try:
+                    self.twofa_field = self.ids.get("twofa_input")
+                    if self.twofa_field:
+                        Clock.schedule_once(
+                            lambda dt: setattr(self.twofa_field, "focus", True), 0
+                        )
+                except Exception:
+                    pass
+                return
+            _complete_login()
         except Exception as e:
             Logger.exception("Login error")
             self.error_text = f"Error: {e}"
 
     def on_submit(self):
         self.do_login()
+
+    def _wipe_all_data(self):
+        Logger.info("Wiping all vault data due to failed attempts")
+        # remove vault file
+        try:
+            vault_path = getattr(storage, "VAULT_FILE", "vault.json")
+            if os.path.exists(vault_path):
+                os.remove(vault_path)
+                Logger.info(f"Removed vault file: {vault_path}")
+        except Exception:
+            Logger.exception("Failed removing vault file")
+
+        # remove master hash and recovery files
+        try:
+            if getattr(mp, "masterHashFile", None) and os.path.exists(
+                mp.masterHashFile
+            ):
+                os.remove(mp.masterHashFile)
+                Logger.info(f"Removed master hash: {mp.masterHashFile}")
+        except Exception:
+            Logger.exception("Failed removing master hash file")
+        try:
+            if getattr(mp, "recoveryFile", None) and os.path.exists(mp.recoveryFile):
+                os.remove(mp.recoveryFile)
+                Logger.info(f"Removed recovery file: {mp.recoveryFile}")
+        except Exception:
+            Logger.exception("Failed removing recovery file")
+
+        # remove user profile
+        try:
+            profile_path = "user_profile.json"
+            if os.path.exists(profile_path):
+                os.remove(profile_path)
+                Logger.info(f"Removed profile file: {profile_path}")
+        except Exception:
+            Logger.exception("Failed removing profile file")
+
+        # clear app_state
+        try:
+            app_state.profile = {}
+            app_state.vault = None
+            app_state.master_password = None
+        except Exception:
+            pass
+
+        # inform user via popup
+        try:
+            content = BoxLayout(orientation="vertical", padding=12, spacing=12)
+            content.add_widget(
+                Label(text="Too many incorrect attempts. Vault has been wiped.")
+            )
+            btn = Button(text="OK", size_hint_y=None, height="40dp")
+            content.add_widget(btn)
+            popup = Popup(
+                title="Vault Wiped",
+                content=content,
+                size_hint=(None, None),
+                size=(520, 220),
+            )
+            btn.bind(on_release=popup.dismiss)
+            popup.open()
+            # After showing the popup briefly, navigate to Create Master screen
+            try:
+                Clock.schedule_once(lambda dt: self._goto_create_master(), 0.6)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def _goto_create_master(self):
+        try:
+            if self.manager and "CREATE" in self.manager.screen_names:
+                self.manager.current = "CREATE"
+        except Exception:
+            Logger.exception("Failed to navigate to Create Master screen after wipe")
+
+    def _inc_failed_attempts_and_check(self) -> bool:
+        try:
+            profile = getattr(app_state, "profile", None) or load_profile() or {}
+            attempts = int(profile.get("failed_master_attempts", 0)) + 1
+            profile["failed_master_attempts"] = attempts
+            try:
+                app_state.profile = profile
+            except Exception:
+                pass
+            try:
+                save_profile_to_disk(profile)
+            except Exception:
+                pass
+            if attempts >= 5:
+                return True
+        except Exception:
+            pass
+        return False
+
+    def _reset_failed_attempts(self):
+        try:
+            profile = getattr(app_state, "profile", None) or load_profile() or {}
+            if profile.get("failed_master_attempts"):
+                profile["failed_master_attempts"] = 0
+                try:
+                    app_state.profile = profile
+                except Exception:
+                    pass
+                try:
+                    save_profile_to_disk(profile)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def verify_2fa_and_login(self):
+        try:
+            profile = getattr(app_state, "profile", None) or load_profile()
+            if not (
+                profile and profile.get("2fa_enabled") and profile.get("2fa_secret")
+            ):
+                self.error_text = "2FA not configured"
+                return
+            code = (self.twofa_field.text or "").strip() if self.twofa_field else ""
+            secret = profile.get("2fa_secret")
+
+            # Primary verify attempt
+            ok = tf.verify_code(secret, code, window=1)
+
+            if not ok:
+                try:
+                    disk_profile = load_profile() or {}
+                    disk_secret = disk_profile.get("2fa_secret")
+                    if disk_secret and disk_secret != secret:
+                        Logger.info("2FA verify: trying disk profile secret")
+                        ok = tf.verify_code(disk_secret, code, window=1)
+                except Exception:
+                    pass
+            if ok:
+                # reset failed-attempts counter on successful authentication
+                try:
+                    self._reset_failed_attempts()
+                    Logger.info(
+                        "LoginScreen: reset failed_master_attempts after successful 2FA login"
+                    )
+                except Exception:
+                    pass
+
+                pwd = self._pending_pwd or ""
+                self._pending_pwd = None
+                app_state.vault = Vault(pwd)
+                app_state.master_password = pwd
+                try:
+                    App.get_running_app().show_status("Logged in")
+                except Exception:
+                    pass
+                if not getattr(app_state, "profile", None):
+                    app_state.profile = profile
+                if self.manager and "HOME" in self.manager.screen_names:
+                    try:
+                        home = self.manager.get_screen("HOME")
+                        home.refresh_entries()
+                    except Exception:
+                        Logger.exception("Failed to refresh Home screen after login")
+                if "HOME" in self.manager.screen_names:
+                    self.manager.current = "HOME"
+            else:
+                # increment attempts for failed 2FA (treat as an authentication failure)
+                try:
+                    reached = self._inc_failed_attempts_and_check()
+                    if reached:
+                        self._wipe_all_data()
+                        self.error_text = "Too many failed attempts — vault wiped"
+                        return
+                    profile2 = (
+                        getattr(app_state, "profile", None) or load_profile() or {}
+                    )
+                    remaining2 = 5 - int(profile2.get("failed_master_attempts", 0))
+                    self.error_text = f"Invalid 2FA code ({remaining2} attempts left)"
+                except Exception:
+                    self.error_text = "Invalid 2FA code"
+        except Exception as e:
+            Logger.exception("2FA verify failed")
+            self.error_text = f"2FA error: {e}"
 
     def _send_recovery_thread(self, email, smtp_config, popup):
         try:
@@ -170,6 +425,7 @@ class LoginScreen(Screen):
                 except Exception:
                     Logger.exception(f"Failed to read profile file: {p}")
         return {}
+
     def _get_recovery_email(self) -> str:
         try:
             mp_obj = mp.loadRecovery()
@@ -177,8 +433,7 @@ class LoginScreen(Screen):
                 return mp_obj["email"] or ""
         except Exception:
             Logger.exception("Failed to load recovery email from master password")
-    
-    #fallback to profile JSON
+        # fallback to profile JSON
         profile = getattr(app_state, "profile", None) or self._load_profile_file()
         if isinstance(profile, dict):
             return profile.get("email", "") or ""

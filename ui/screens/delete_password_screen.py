@@ -34,6 +34,12 @@ class DeletePasswordScreen(Screen):
             if app_state.vault.delete(site):
                 self.info_text = "Deleted"
                 self.refresh_sites()
+                try:
+                    from kivy.app import App
+
+                    App.get_running_app().show_status("Deleted")
+                except Exception:
+                    pass
             else:
                 self.info_text = "Not found"
         except Exception as e:

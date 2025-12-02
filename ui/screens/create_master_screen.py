@@ -44,11 +44,11 @@ class CreateMasterScreen(Screen):
         p2 = (self.pwd2_field.text or "") if self.pwd2_field else ""
         err = self._validate(p1, p2)
         email = (self.email_field.text or "").strip() if self.email_field else ""
-        
+
         if err:
             self.error_text = err
             return
-        
+
         if email:
             if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
                 self.error_text = "Please enter a valid email address"
@@ -62,18 +62,29 @@ class CreateMasterScreen(Screen):
                 if hasattr(mp, "setRecoveryEmail"):
                     mp.setRecoveryEmail(email)
                 else:
-                    Logger.warning("CreateMaster: mp.setRecoveryEmail not found; email not persisted")
+                    Logger.warning(
+                        "CreateMaster: mp.setRecoveryEmail not found; email not persisted"
+                    )
             except Exception:
                 Logger.exception("CreateMaster: mp.setRecoveryEmail failed")
-            #update app_state
+            # update app_state
             try:
-                app_state.profile = {**(getattr(app_state, "profile", {}) or {}), "email": email}
+                app_state.profile = {
+                    **(getattr(app_state, "profile", {}) or {}),
+                    "email": email,
+                }
             except Exception:
                 Logger.exception("CreateMaster: failed to update app_state.profile")
 
             app_state.vault = Vault(p1)
             app_state.master_password = p1
             Logger.info("CreateMaster: master password created")
+            try:
+                from kivy.app import App
+
+                App.get_running_app().show_status("Master password created")
+            except Exception:
+                pass
 
         except Exception as e:
             Logger.exception("Create master failed")

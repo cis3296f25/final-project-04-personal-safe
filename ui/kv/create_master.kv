@@ -58,11 +58,12 @@
                         text_size: self.size
                     CustomTextInput:
                         id: pwd1_input
-                        hint_text: "Master Password"
+                        hint_text: "Enter Master Password"
+                        on_focus: self.hint_text = '' if self.focus else ('Enter Master Password' if not self.text else self.hint_text)
                         password: True
                         halign: "center"
                         multiline: False
-                        padding_y: (self.height - self.font_size) / 2
+                        padding_y: dp(12)
 
                 # PWD2 Row
                 BoxLayout:
@@ -80,11 +81,12 @@
                         text_size: self.size
                     CustomTextInput:
                         id: pwd2_input
-                        hint_text: "Confirm Password"
+                        hint_text: "Re-enter Password"
+                        on_focus: self.hint_text = '' if self.focus else ('Re-enter Password' if not self.text else self.hint_text)
                         password: True
                         halign: "center"
                         multiline: False
-                        padding_y: (self.height - self.font_size) / 2
+                        padding_y: dp(12)
                 #recovery email row
                 BoxLayout:
                     orientation: "horizontal"
@@ -101,9 +103,11 @@
                         text_size: self.size
                     CustomTextInput:
                         id: email_input
-                        hint_text: "Recovery email"
+                        halign: "center"
+                        hint_text: "Enter Recovery Email"
+                        on_focus: self.hint_text = '' if self.focus else ('Enter Recovery Email' if not self.text else self.hint_text)
                         multiline: False
-                        padding_y: (self.height - self.font_size) / 2
+                        padding_y: dp(12)
                 # Confirm row
                 BoxLayout:
                     orientation: "horizontal"
