@@ -1,29 +1,63 @@
 <ClearVaultScreen>:
+    canvas.before:
+        Color:
+            rgba: 237/255, 231/255, 217/255, 1
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
     BoxLayout:
         orientation: "vertical"
-        padding: 20
-        spacing: 10
 
-        Label:
-            text: "Clear Vault"
-            font_size: "18sp"
-            size_hint_y: None
-            height: 40
+        HeaderBox:
+            Label:
+                text: "Clear Vault"
+                font_size: "24sp"
+                size_hint_x: 0.7
+                bold: True
 
-        Label:
-            text: root.info_text
-            color: 1,0,0,1
-            size_hint_y: None
-            height: 30
+        AnchorLayout:
+            anchor_x: "center"
+            anchor_y: "center"
 
-        Button:
-            text: "Clear Vault"
-            size_hint_y: None
-            height: 40
-            on_release: root.confirm_clear()
+            BoxLayout:
+                orientation: "vertical"
+                padding: dp(16)
+                spacing: dp(12)
+                size_hint: None, None
+                width: min(dp(480), root.width * 0.95)
+                height: self.minimum_height
 
-        Button:
-            text: "Back"
-            size_hint_y: None
-            height: 40
-            on_release: root.go_home()
+                Label:
+                    text: "This will permanently delete all saved passwords!"
+                    color: (1,0,0,1)
+                    halign: "center"
+                    text_size: self.size
+                    size_hint_y: None
+                    height: dp(40)
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(44)
+                    spacing: dp(8)
+
+                    CustomButton:
+                        text: "Back"
+                        size_hint_x: None
+                        width: dp(120)
+                        on_release: root.go_home()
+
+                    Widget:
+
+                    CustomButton:
+                        text: "Clear Vault"
+                        size_hint_x: None
+                        width: dp(160)
+                        on_release: root.confirm_clear()
+
+                Label:
+                    text: root.info_text
+                    size_hint_y: None
+                    height: dp(24)
+                    color:
+                        (1,0,0,1) if 'Error' in root.info_text or 'error' in root.info_text else (0.1,0.5,0.1,1)
