@@ -1,25 +1,64 @@
 
 <BackupExportScreen>:
+    canvas.before:
+        Color:
+            rgba: 237/255, 231/255, 217/255, 1
+        Rectangle:
+            size: self.size
+            pos: self.pos
+
     path_field: path_input
+
     BoxLayout:
         orientation: "vertical"
-        padding: 10
-        spacing: 10
-        Label:
-            text: "Export Encrypted Backup"
-            size_hint_y: None
-            height: "30dp"
-        TextInput:
-            id: path_input
-            hint_text: "Enter filepath (e.g. vault_backup.psafe)"
-            multiline: False
-        BoxLayout:
-            size_hint_y: None
-            height: "40dp"
-            spacing: 8
-            Button:
-                text: "Export"
-                on_release: root.do_export()
-            Button:
-                text: "Cancel"
-                on_release: root.goto_home()
+
+        HeaderBox:
+            Label:
+                text: "Export Encrypted Backup"
+                font_size: "24sp"
+                size_hint_x: 0.7
+                bold: True
+
+        AnchorLayout:
+            anchor_x: "center"
+            anchor_y: "center"
+
+            BoxLayout:
+                orientation: "vertical"
+                padding: dp(16)
+                spacing: dp(12)
+                size_hint: None, None
+                width: min(dp(520), root.width * 0.95)
+                height: self.minimum_height
+
+                CustomTextInput:
+                    id: path_input
+                    hint_text: "Enter filepath (e.g. vault_backup.psafe)"
+                    halign: "center"
+                    multiline: False
+                    padding_y: dp(12)
+
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint_y: None
+                    height: dp(44)
+                    spacing: dp(8)
+
+                    CustomButton:
+                        text: "Back"
+                        size_hint_x: None
+                        width: dp(120)
+                        on_release: root.goto_home()
+                    Widget:
+                    CustomButton:
+                        text: "Export"
+                        size_hint_x: None
+                        width: dp(120)
+                        on_release: root.do_export()
+
+                Label:
+                    text: root.info_text
+                    size_hint_y: None
+                    height: dp(24)
+                    color:
+                        (1,0,0,1) if 'Error' in root.info_text or 'error' in root.info_text else (0.1,0.5,0.1,1)
