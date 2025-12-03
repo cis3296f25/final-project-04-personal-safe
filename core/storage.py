@@ -67,5 +67,16 @@ def load_vault(
     except FileNotFoundError:
         return {}
 
-    # Fallback empty dict on any unexpected path
+    #Fallback empty dict on any unexpected path
     return {}
+
+def migrate_vault_password(old_password: str, new_password: str) -> None:
+    """Re-encrypt vault using new master password."""
+    # Load using old password
+    old_data = load_vault(old_password)
+    if old_data is None:
+        raise ValueError("Unable to load existing vault with old password.")
+
+    # Save using new password
+    save_vault(old_data, new_password)
+

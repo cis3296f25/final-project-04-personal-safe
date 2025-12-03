@@ -1,4 +1,5 @@
 # ui/screens/reset_password_screen.py
+from core.vault import Vault
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -6,7 +7,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 
-from core import masterPassword as mp
+from core import masterPassword as mp, storage
 from app_state import app_state
 
 class ResetPasswordScreen(Screen):
@@ -29,21 +30,27 @@ class ResetPasswordScreen(Screen):
     def _reset_password(self, *_):
         new_pw = self.new_pw.text.strip()
         confirm_pw = self.confirm_pw.text.strip()
+
         if not new_pw:
             self._show_popup("Error", "Password cannot be empty.")
             return
-
         if new_pw != confirm_pw:
             self._show_popup("Error", "Passwords do not match.")
             return
-        mp.createMasterPassword(new_pw)
-
+        old_pw = getattr(app_state, "master_password", None)
+        if old_pw and storage.vault_exists():
+            try:
+                storage.migrate_vault_password(old_pw, new_pw)
+            except Exception as e:
+                self._show_popup("Error", f"Failed to migrate vault: {e}")
+            return
+        else:
+            mp.createMasterPassword(new_pw)
         app_state.master_password = new_pw
-
-        self._show_popup("Success", "Master password has been reset.")
-
+        app_state.vault = Vault(new_pw)
+        self._show_popup("Success", "Master password has been reset without losing your vault.")
         self.manager.current = "HOME"
-
+        
     def _show_popup(self, title, message):
         content = BoxLayout(orientation="vertical", padding=12, spacing=12)
         content.add_widget(Label(text=message))

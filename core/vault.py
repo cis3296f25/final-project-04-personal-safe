@@ -83,3 +83,15 @@ class Vault:
         # Persist the empty vault to disk
         from . import storage
         storage.save_vault(self._data, self._master_password)
+
+    def export_decrypted(self):
+    #return a deep copy
+        return dict(self._data)
+
+
+    def replace_password(self, new_master_password: str):
+    #keep decrypted data
+        data = dict(self._data)
+        self._master_password = new_master_password
+        storage.save_vault(data, new_master_password)
+        self._data = data
