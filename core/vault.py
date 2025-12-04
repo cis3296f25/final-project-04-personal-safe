@@ -8,6 +8,7 @@ class Vault:
         # load_vault now requires a master password to derive the key
         self._master_password = master_password
         self._data: Dict[str, str] = storage.load_vault(master_password)
+        print("VAULT INIT: loading vault with password:", master_password)
 
     def add(self, site: str, pwd: str) -> None:
         if not site or not pwd:

@@ -40,43 +40,44 @@ def save_vault(
 
 def load_vault(
     master_password: str, vault_file: Optional[str] = None
-) -> Dict[str, str]:
+) -> Optional[Dict[str, str]]:
     """
     Load the vault using master_password to derive the key from the salt stored in the first line.
     Backwards-compatible: if file doesn't contain a header, attempt to decrypt the whole file with
     a key derived from the provided password and a default salt (will likely fail).
     """
     path = vault_file or VAULT_FILE
+
+    if not os.path.exists(path):
+        return {}
+    
     try:
         with open(path, "r") as f:
             lines = f.read().splitlines()
-
-        if not lines:
-            return {}
-
-        # Expect first line = salt, remaining = ciphertext
-        try:
-            salt = base64.b64decode(lines[0])
-            ciphertext = "\n".join(lines[1:])
-            key = CryptoUtils.derive_key(master_password, salt)
-            plaintext = CryptoUtils.decrypt(ciphertext, key)
-            return json.loads(plaintext)
-        except Exception:
-            # Decryption failed (wrong password or corrupt file)
-            return {}
-    except FileNotFoundError:
+    except Exception:
         return {}
 
-    #Fallback empty dict on any unexpected path
-    return {}
+    if not lines:
+        return {}
+
+        # Expect first line = salt, remaining = ciphertext
+    try:
+        salt = base64.b64decode(lines[0])
+        ciphertext = "\n".join(lines[1:])
+        key = CryptoUtils.derive_key(master_password, salt)
+        plaintext = CryptoUtils.decrypt(ciphertext, key)
+        return json.loads(plaintext)
+    except Exception:
+        # Decryption failed (wrong password or corrupt file)
+        return {}
 
 def migrate_vault_password(old_password: str, new_password: str) -> None:
     """Re-encrypt vault using new master password."""
-    # Load using old password
+    #Load using old password
     old_data = load_vault(old_password)
-    if old_data is None:
-        raise ValueError("Unable to load existing vault with old password.")
+    if vault_exists() and old_data == {}:
+        raise ValueError("Incorrect old password — cannot migrate vault.")
 
-    # Save using new password
+    #Save using new password
     save_vault(old_data, new_password)
 
