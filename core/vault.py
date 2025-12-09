@@ -83,3 +83,14 @@ class Vault:
         # Persist the empty vault to disk
         from . import storage
         storage.save_vault(self._data, self._master_password)
+
+    def change_master_password(self, new_password: str) -> None:
+        if not new_password:
+            raise ValueError("New password cannot be empty")
+
+        decrypted_data = storage.load_vault(self._master_password)
+
+         # Save data with new password
+        self._data = dict(decrypted_data)
+        self._master_password = new_password
+        storage.save_vault(self._data, new_password)

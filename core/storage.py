@@ -47,7 +47,17 @@ def load_vault(
     a key derived from the provided password and a default salt (will likely fail).
     """
     path = vault_file or VAULT_FILE
-    try:
+
+    if not os.path.exists(path):
+        return {}
+    
+    with open(path, "r") as f:
+        lines = f.read().splitlines()
+
+    if len(lines) < 2:
+        return {}
+    
+    #try:
         with open(path, "r") as f:
             lines = f.read().splitlines()
 
@@ -55,16 +65,18 @@ def load_vault(
             return {}
 
         # Expect first line = salt, remaining = ciphertext
-        try:
-            salt = base64.b64decode(lines[0])
-            ciphertext = "\n".join(lines[1:])
-            key = CryptoUtils.derive_key(master_password, salt)
-            plaintext = CryptoUtils.decrypt(ciphertext, key)
-            return json.loads(plaintext)
-        except Exception:
-            # Decryption failed (wrong password or corrupt file)
-            return {}
-    except FileNotFoundError:
+    try:
+        salt = base64.b64decode(lines[0])
+        ciphertext = "\n".join(lines[1:])
+        key = CryptoUtils.derive_key(master_password, salt)
+        plaintext = CryptoUtils.decrypt(ciphertext, key)
+        return json.loads(plaintext)
+    except Exception:
+        # Decryption failed (wrong password or corrupt file)
+        #return {}
+        raise ValueError("Incorrect master password or corrupt vault file")
+    
+    #except FileNotFoundError:
         return {}
 
     # Fallback empty dict on any unexpected path
