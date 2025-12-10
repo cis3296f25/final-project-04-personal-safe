@@ -17,6 +17,7 @@ Ensure Python 3.13.5 is installed. You can check by running: python3 --version
 4. Install Dependencies  
 `pip install cryptography pyinstaller kivy bcrypt dotenv qrcode pillow pyotp`
 5. Create a `.env` file in the root directory following the format of `.env.sample` and fill in the required values
+    * Input a SendGrid API key for email functionality
 6. Build the application  
 `pyinstaller --onefile --windowed main.py`
 7. Run Personal Safe
